@@ -22,6 +22,8 @@ export default {
     async fetchName({ payload }, { dispatch, state, globalState}) {
       let data = await fetchName();
       
+      console.info('%c fetchName', 'color: red')
+      
       dispatch({
         type: 'upadte',
         payload: { name: data.data }
@@ -31,7 +33,11 @@ export default {
 
   reducers: {
     upadte(state, { payload }) {
-      return { ...state, ...payload }
+      console.info('%c upadte', 'color: green')
+
+      for(var i in payload) {
+        state[i] = payload[i]
+      }
     }
   },
 

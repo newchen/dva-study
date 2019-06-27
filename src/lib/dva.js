@@ -1,8 +1,9 @@
-// 完善dispatch方法: 添加namespace前缀
+// 添加useImmer和useReduxMiddleware功能配置
 
 import { useEffect, useState, useCallback } from 'react'
 import ReactDOM from 'react-dom'
 import browserHistory from './history';
+import produce from 'immer';
 
 let globalState = {};
 let globalModels = {};
@@ -41,7 +42,7 @@ export function dva(config = {}) {
           temp.push(
             subscriptions[key]({ 
               history, 
-              dispatch: middlewaresDispatch(ns) // 替换为中间件的diapatch
+              dispatch: middlewaresDispatch(ns) 
             })
           )
         }
@@ -84,14 +85,14 @@ export function getState() {
 
 // 在model中的dispatch, 如果没有namespace前缀, 自动加上当前model的namespace
 function addNamespace(ns, action) {
-  let { type = '' } = action;
-  let temp = type.split('/')
+    let { type = '' } = action;
+    let temp = type.split('/')
 
-  if(temp.length === 1) {
-    temp = [ns, temp[0]]
-  }
+    if(temp.length === 1) {
+      temp = [ns, temp[0]]
+    }
 
-  return { ...action, type: temp.join('/') }
+    return { ...action, type: temp.join('/') }
 }
 
 // 包裹了中间件的dispatch
@@ -102,7 +103,7 @@ export function middlewaresDispatch(ns) {
 // 中间件机制
 function applyMiddlewaresDispatch(ns) {
   let i = 0;
-  let { onAction } = globalConfig
+  let { useReduxMiddleware, onAction } = globalConfig
   let middlewares = [].concat(onAction || []);
 
   function next (action) {
@@ -112,8 +113,10 @@ function applyMiddlewaresDispatch(ns) {
       dispatch(action)
       return;
     }
-      
-    handler({ getState, action, dispatch, next })
+    
+    useReduxMiddleware ?
+      handler({ getState, dispatch })(next)(action) :
+      handler({ getState, action, dispatch, next })
   }
 
   return (action) => {
@@ -122,7 +125,7 @@ function applyMiddlewaresDispatch(ns) {
   }
 }
 
-// 实现dispatch
+// 最底层的dispatch
 export function dispatch(action) {
   let { type = '' } = action;
   let temp = type.split('/')
@@ -139,7 +142,7 @@ export function dispatch(action) {
 
   if (effects && effects[name]) {
     return effects[name](action, { 
-      dispatch: middlewaresDispatch(ns), // 替换为中间件的diapatch
+      dispatch: middlewaresDispatch(ns), 
       state: globalState[ns], 
       globalState 
     })
@@ -148,10 +151,12 @@ export function dispatch(action) {
   if (reducers && reducers[name]) {
     let reducer = reducers[name]
 
-    // 更改状态
-    globalState[ns] = reducer(globalState[ns], action)
+    globalState[ns] = globalConfig.useImmer ?
+      produce(globalState[ns], (draft) => {
+        reducer(draft, action)
+      }) : 
+      reducer(globalState[ns], action)
 
-    // 更新视图
     globalUpdaters.forEach(([setState, getState]) => {
       setState(getState())
     })

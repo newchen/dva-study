@@ -1,6 +1,6 @@
 ## dva学习 - 源码相关
 
 ```
-实现类dva, 步骤4:
-  完善dispatch方法: 添加namespace前缀
+实现类dva, 步骤5:
+  添加useImmer和useReduxMiddleware功能配置
 ```
