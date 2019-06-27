@@ -1,5 +1,7 @@
-import React from 'react';
-import ReactDOM from 'react-dom';
-import getRouterComponent from './router';
+import { dva } from './lib/dva'
 
-ReactDOM.render(getRouterComponent(), document.getElementById('root'));
+let app = dva()
+
+app.router(require('./router').default)
+
+app.start('#root');

@@ -14,18 +14,18 @@ export default {
       console.log('app payload: ', payload)
       let data = await fetchInit();
 
-      dispatch({
-        type: 'upadte',
-        payload: { init: data.data }
-      })
+      // dispatch({
+      //   type: 'upadte',
+      //   payload: { init: data.data }
+      // })
     },
     async fetchName({ payload }, { dispatch, state, globalState}) {
       let data = await fetchName();
       
-      dispatch({
-        type: 'upadte',
-        payload: { name: data.data }
-      })
+      // dispatch({
+      //   type: 'upadte',
+      //   payload: { name: data.data }
+      // })
     }
   },
 
@@ -39,10 +39,10 @@ export default {
     setup({ history, dispatch }) {
       console.log('app setup')
 
-      dispatch({
-        type: 'fetchInit',
-        payload: 12
-      })
+      // dispatch({
+      //   type: 'fetchInit',
+      //   payload: 12
+      // })
     }
   }
 }

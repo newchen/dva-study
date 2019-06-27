@@ -12,10 +12,10 @@ export default {
       console.log('aa payload: ', payload)
       let data = await fetchEat()
       
-      dispatch({
-        type: 'upadte',
-        payload: { eat: data.data }
-      })
+      // dispatch({
+      //   type: 'upadte',
+      //   payload: { eat: data.data }
+      // })
     },
   },
 
@@ -29,10 +29,10 @@ export default {
     setup({ history, dispatch }) {
       console.log('aa setup')
 
-      dispatch({
-        type: 'fetchEat',
-        payload: 12
-      })
+      // dispatch({
+      //   type: 'fetchEat',
+      //   payload: 12
+      // })
     }
   }
 }
