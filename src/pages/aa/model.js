@@ -21,9 +21,7 @@ export default {
 
   reducers: {
     upadte(state, { payload }) {
-      for(var i in payload) {
-        state[i] = payload[i]
-      }
+      return { ...state, ...payload }
     }
   },
 

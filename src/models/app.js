@@ -14,7 +14,11 @@ export default {
       console.log('app payload: ', payload)
       let data = await fetchInit();
 
-      dispatch({
+      await dispatch({
+        type: 'fetchName'
+      })
+
+      await dispatch({
         type: 'upadte',
         payload: { init: data.data }
       })
@@ -23,11 +27,11 @@ export default {
       let data = await fetchName();
       
       console.info('%c fetchName', 'color: red')
-      
-      dispatch({
-        type: 'upadte',
-        payload: { name: data.data }
-      })
+
+      // dispatch({
+      //   type: 'upadte',
+      //   payload: { name: data.data }
+      // })
     }
   },
 
@@ -35,9 +39,7 @@ export default {
     upadte(state, { payload }) {
       console.info('%c upadte', 'color: green')
 
-      for(var i in payload) {
-        state[i] = payload[i]
-      }
+      return { ...state, ...payload }
     }
   },
 

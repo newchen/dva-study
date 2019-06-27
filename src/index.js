@@ -1,10 +1,7 @@
 import { dva } from './lib/dva'
-// import { logger, middle2, middle3 } from './utils/middleware'
-import { logger, middle2, middle3 } from './utils/reduxMiddleware'
+import { logger, middle2, middle3 } from './utils/asyncMiddleware'
 
 let app = dva({
-  useImmer: true,
-  useReduxMiddleware: true,
   onAction: [ logger, middle2, middle3 ],
 })
 

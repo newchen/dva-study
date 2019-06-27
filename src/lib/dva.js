@@ -1,4 +1,4 @@
-// 添加useImmer和useReduxMiddleware功能配置
+// 基于dva-step5版本修改, 将express中间件机制换成了koa中间件机制, 支持在effect中: await dispatch({xxx}), 能够按照顺序执行, 但是增加了实现和使用的复杂度(中间件示例:asyncMiddleware)
 
 import { useEffect, useState, useCallback } from 'react'
 import ReactDOM from 'react-dom'
@@ -64,6 +64,9 @@ export function dva(config = {}) {
     },
 
     router(getRouterComponent) {
+      if (typeof getRouterComponent !== 'function') {
+        throw new Error('app.router需要传入的是一个函数')
+      }
       globalComponent = getRouterComponent({
         history, app
       })
@@ -76,7 +79,6 @@ export function dva(config = {}) {
 
   return app;
 }
-
 export default dva;
 
 export function getState() {
@@ -102,31 +104,51 @@ export function middlewaresDispatch(ns) {
 
 // 中间件机制
 function applyMiddlewaresDispatch(ns) {
-  let i = 0;
   let { useReduxMiddleware, onAction } = globalConfig
   let middlewares = [].concat(onAction || []);
 
-  function next (action) {
-    const handler = middlewares[i++]
-
-    if (!handler) {
-      dispatch(action)
-      return;
+  function apply(fn, action, next) {
+    if (fn === dispatch) {
+      return dispatch(action)
     }
-    
-    useReduxMiddleware ?
-      handler({ getState, dispatch })(next)(action) :
-      handler({ getState, action, dispatch, next })
+    return useReduxMiddleware ?
+      fn({ getState, dispatch })(next)(action) :
+      fn({ getState, action, dispatch, next })
   }
 
-  return (action) => {
-    i = 0;
-    next(ns ? addNamespace(ns, action) : action )
+  function compose(action, done) {
+    // 记录上一次执行中间件的位置 #
+    let index = -1
+    return next(0)
+
+    function next (i) {
+      // 理论上 i 会大于 index，因为每次执行一次都会把 i递增，
+      // 如果相等或者小于，则说明next()执行了多次
+      if (i <= index) return Promise.reject(new Error('next() 方法被调用了多次'))
+      index = i
+      // 取到当前的中间件
+      let fn = middlewares[i]
+      // 最后一个中间件
+      if (i === middlewares.length) fn = done
+      if (!fn) return Promise.resolve()
+
+      try {
+        // return Promise.resolve(fn(action, () => next(i + 1)))
+        return Promise.resolve(apply(fn, action, () => next(i + 1)))
+      } catch (err) {
+        return Promise.reject(err)
+      }
+
+    }
+  }
+
+  return async (action) => {
+    return await compose( ns ? addNamespace(ns, action) : action, dispatch )
   }
 }
 
 // 最底层的dispatch
-export function dispatch(action) {
+export async function dispatch(action) {
   let { type = '' } = action;
   let temp = type.split('/')
 
@@ -141,7 +163,7 @@ export function dispatch(action) {
   let { effects, reducers } = model
 
   if (effects && effects[name]) {
-    return effects[name](action, { 
+    return await effects[name](action, { 
       dispatch: middlewaresDispatch(ns), 
       state: globalState[ns], 
       globalState 
