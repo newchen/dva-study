@@ -1,4 +1,4 @@
-// 只支持到2级, 无法支持多层嵌套
+// 支持多层嵌套, 只支持加载component, 无法加载model
 
 import React from 'react';
 import { Router, Route, Switch, Redirect } from 'react-router-dom'
@@ -22,7 +22,7 @@ function getRoutes(routes) {
   let routesArr = [];
 
   function travelRoutes(routes, parentRoute = { path: '' }) {
-    routes.forEach((route)=>{
+    routes.forEach((route) => {
       const { path, redirect, children, component } = route;
       const { path: parentPath, component: parentComponent } = parentRoute
       let fullPath = joinPath(parentPath, path)
@@ -41,18 +41,19 @@ function getRoutes(routes) {
       let hasParent = !!parentComponent
 
       if(component) {
-        if (hasParent) {
+        if (hasParent && !hasChildren) {
           routesArr.push(
             <Route 
               key={fullPath} 
               exact path={fullPath} 
               render={
                 (props) => {
-                  return React.createElement( // 这里是重点
-                    dynamic(parentComponent),
-                    props,
-                    React.createElement(dynamic(component), props)
-                  )
+                  return parentComponent // 这里是重点
+                    .concat(React.createElement(dynamic(component), props))
+                    .reverse()
+                    .reduce((pre, cur) => {
+                      return React.createElement(dynamic(cur), props, pre )
+                    })
                 }
               }
             />
@@ -62,14 +63,27 @@ function getRoutes(routes) {
             <Route 
               key={fullPath} 
               exact path={fullPath} 
-              component={dynamic(component)}
+              render={ // 按需加载
+                (props) => React.createElement(
+                  dynamic(component),
+                  props
+                )
+              }
             />
           )
         }
       }
 
       if(hasChildren) {
-        travelRoutes(children, { ...route, path: fullPath})
+        travelRoutes(children, {
+          ...route,
+
+          component: hasParent ? // 这里是重点
+            parentComponent.concat(component) :
+            [ component ],
+          
+          path: fullPath
+        })
       }
     })
   }
