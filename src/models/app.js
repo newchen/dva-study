@@ -14,11 +14,7 @@ export default {
       console.log('app payload: ', payload)
       let data = await fetchInit();
 
-      await dispatch({
-        type: 'fetchName'
-      })
-
-      await dispatch({
+      dispatch({
         type: 'upadte',
         payload: { init: data.data }
       })
@@ -26,18 +22,18 @@ export default {
     async fetchName({ payload }, { dispatch, state, globalState}) {
       let data = await fetchName();
       
-      console.info('%c fetchName', 'color: red')
+      // console.info('%c fetchName', 'color: red')
 
-      // dispatch({
-      //   type: 'upadte',
-      //   payload: { name: data.data }
-      // })
+      dispatch({
+        type: 'upadte',
+        payload: { name: data.data }
+      })
     }
   },
 
   reducers: {
     upadte(state, { payload }) {
-      console.info('%c upadte', 'color: green')
+      // console.info('%c upadte', 'color: green')
 
       return { ...state, ...payload }
     }

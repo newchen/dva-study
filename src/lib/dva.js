@@ -1,9 +1,10 @@
-// 基于dva-step5版本修改, 将express中间件机制换成了koa中间件机制, 支持在effect中: await dispatch({xxx}), 能够按照顺序执行, 但是增加了实现和使用的复杂度(中间件示例:asyncMiddleware)
+// 基于dva-step5版本修改, 还是使用express中间件机制, 添加plugin插件机制
 
 import { useEffect, useState, useCallback } from 'react'
 import ReactDOM from 'react-dom'
 import browserHistory from './history';
 import produce from 'immer';
+import Plugin from './plugin'
 
 let globalState = {};
 let globalModels = {};
@@ -11,6 +12,7 @@ let globalUpdaters = [];
 let globalComponent = null;
 let globalConfig = {};
 let globalUnlisten = {}
+let globalPlugins = null
 
 export function dva(config = {}) {
   globalConfig = config;
@@ -42,7 +44,7 @@ export function dva(config = {}) {
           temp.push(
             subscriptions[key]({ 
               history, 
-              dispatch: middlewaresDispatch(ns) 
+              dispatch: middlewaresDispatch(ns)
             })
           )
         }
@@ -67,6 +69,7 @@ export function dva(config = {}) {
       if (typeof getRouterComponent !== 'function') {
         throw new Error('app.router需要传入的是一个函数')
       }
+
       globalComponent = getRouterComponent({
         history, app
       })
@@ -74,11 +77,20 @@ export function dva(config = {}) {
 
     start(selector) {
       ReactDOM.render(globalComponent, document.querySelector(selector));
+    },
+
+    use(plugin) {
+      if (!globalPlugins) {
+        globalPlugins = new Plugin()
+      }
+
+      globalPlugins.use(plugin)
     }
   }
 
   return app;
 }
+
 export default dva;
 
 export function getState() {
@@ -104,51 +116,40 @@ export function middlewaresDispatch(ns) {
 
 // 中间件机制
 function applyMiddlewaresDispatch(ns) {
-  let { useReduxMiddleware, onAction } = globalConfig
-  let middlewares = [].concat(onAction || []);
+  let i = 0;
+  let { useReduxMiddleware } = globalConfig
+  let middlewares = getAllHooks('onAction');
 
-  function apply(fn, action, next) {
-    if (fn === dispatch) {
-      return dispatch(action)
+  function next (action) {
+    const handler = middlewares[i++]
+
+    if (!handler) {
+      dispatch(action)
+      return;
     }
-    return useReduxMiddleware ?
-      fn({ getState, dispatch })(next)(action) :
-      fn({ getState, action, dispatch, next })
+    
+    useReduxMiddleware ?
+      handler({ getState, dispatch })(next)(action) :
+      handler({ getState, action, dispatch, next })
   }
 
-  function compose(action, done) {
-    // 记录上一次执行中间件的位置 #
-    let index = -1
-    return next(0)
-
-    function next (i) {
-      // 理论上 i 会大于 index，因为每次执行一次都会把 i递增，
-      // 如果相等或者小于，则说明next()执行了多次
-      if (i <= index) return Promise.reject(new Error('next() 方法被调用了多次'))
-      index = i
-      // 取到当前的中间件
-      let fn = middlewares[i]
-      // 最后一个中间件
-      if (i === middlewares.length) fn = done
-      if (!fn) return Promise.resolve()
-
-      try {
-        // return Promise.resolve(fn(action, () => next(i + 1)))
-        return Promise.resolve(apply(fn, action, () => next(i + 1)))
-      } catch (err) {
-        return Promise.reject(err)
-      }
-
-    }
-  }
-
-  return async (action) => {
-    return await compose( ns ? addNamespace(ns, action) : action, dispatch )
+  return (action) => {
+    i = 0;
+    next(ns ? addNamespace(ns, action) : action )
   }
 }
 
+export function getPlugin(key) {
+  return globalPlugins.get(key)
+}
+
+// hooks来源有2个: 1. 通过dva(config)传入;  2. 通过dva.use(plugin)传入
+function getAllHooks(key) {
+  return [].concat(globalConfig[key] || []).concat(getPlugin(key))
+}
+
 // 最底层的dispatch
-export async function dispatch(action) {
+export function dispatch(action) {
   let { type = '' } = action;
   let temp = type.split('/')
 
@@ -163,11 +164,33 @@ export async function dispatch(action) {
   let { effects, reducers } = model
 
   if (effects && effects[name]) {
-    return await effects[name](action, { 
+    let args = [effects[name] , { dispatch }, model, type]
+    
+    let params = { 
       dispatch: middlewaresDispatch(ns), 
       state: globalState[ns], 
       globalState 
+    }
+
+    let handleErrors = getAllHooks('onError')
+
+    // onEffect逻辑
+    // 假设use添加的顺序是: [1, 2, 3], 那么执行顺序: 3 -> 2 -> 1 -> 1 -> 2 -> 3
+    getPlugin('onEffect').reduce((pre, cur, index, arr) => {
+      let asyncFn = cur(pre( ...args ),  ...args.slice(1))
+
+      if (index === arr.length - 1) {
+        try {
+          asyncFn(action, params)
+        } catch(e) {
+          handleErrors.forEach(v => v(e))
+        }
+      }
+
+      return asyncFn
     })
+
+    return;
   }
 
   if (reducers && reducers[name]) {
@@ -203,7 +226,7 @@ export function useMapState(mapState, mapDispatch) {
   }, [getState])
 
   let middleDispatch = middlewaresDispatch()
-
+  
   return [ 
     state, 
     mapDispatch ? mapDispatch(middleDispatch) : middleDispatch
