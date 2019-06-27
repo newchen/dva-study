@@ -3,13 +3,19 @@ export default [
   {
     path: '/',
     component: () => import('../layouts/BasicLayout'),
+    models: [
+      () => import('../models/app')
+    ],
     children: [
       { 
         path: 'a', 
         component: () => import('../layouts/APageLayout'),
         children: [
           { 
-            path: 'aa',
+            path: 'aa', 
+            models: [
+              () => import('../pages/aa/model')
+            ],
             component: () => import('../pages/aa/index'),  
           },
           { path: 'bb', component: () => import('../pages/bb') },

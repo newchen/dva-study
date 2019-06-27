@@ -1,8 +1,7 @@
 ## dva学习 - 源码相关
 
 ```
-layout布局示例2:
-  更新了routeComponent代码,
-  支持多层嵌套,
-  可查看路径: /a, /a/aa
+layout布局示例3:
+  更新了dynamic和routeComponent代码,
+  支持同时加载: 比如dva中的component和model
 ```
