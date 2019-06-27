@@ -13,7 +13,7 @@ export default {
       let data = await fetchEat()
       
       dispatch({
-        type: 'aa/upadte',
+        type: 'upadte',
         payload: { eat: data.data }
       })
     },
@@ -30,7 +30,7 @@ export default {
       console.log('aa setup')
 
       dispatch({
-        type: 'aa/fetchEat',
+        type: 'fetchEat',
         payload: 12
       })
     }

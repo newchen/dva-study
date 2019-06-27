@@ -15,7 +15,7 @@ export default {
       let data = await fetchInit();
 
       dispatch({
-        type: 'app/upadte',
+        type: 'upadte',
         payload: { init: data.data }
       })
     },
@@ -23,7 +23,7 @@ export default {
       let data = await fetchName();
       
       dispatch({
-        type: 'app/upadte',
+        type: 'upadte',
         payload: { name: data.data }
       })
     }
@@ -40,7 +40,7 @@ export default {
       console.log('app setup')
 
       dispatch({
-        type: 'app/fetchInit',
+        type: 'fetchInit',
         payload: 12
       })
     }

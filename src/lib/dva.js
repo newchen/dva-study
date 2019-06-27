@@ -1,4 +1,4 @@
-// 中间件机制
+// 完善dispatch方法: 添加namespace前缀
 
 import { useEffect, useState, useCallback } from 'react'
 import ReactDOM from 'react-dom'
@@ -41,7 +41,7 @@ export function dva(config = {}) {
           temp.push(
             subscriptions[key]({ 
               history, 
-              dispatch: middlewaresDispatch() // 替换为中间件的diapatch
+              dispatch: middlewaresDispatch(ns) // 替换为中间件的diapatch
             })
           )
         }
@@ -82,13 +82,25 @@ export function getState() {
   return globalState
 }
 
+// 在model中的dispatch, 如果没有namespace前缀, 自动加上当前model的namespace
+function addNamespace(ns, action) {
+  let { type = '' } = action;
+  let temp = type.split('/')
+
+  if(temp.length === 1) {
+    temp = [ns, temp[0]]
+  }
+
+  return { ...action, type: temp.join('/') }
+}
+
 // 包裹了中间件的dispatch
-export function middlewaresDispatch() {
-  return applyMiddlewaresDispatch()
+export function middlewaresDispatch(ns) {
+  return applyMiddlewaresDispatch(ns)
 }
 
 // 中间件机制
-function applyMiddlewaresDispatch() {
+function applyMiddlewaresDispatch(ns) {
   let i = 0;
   let { onAction } = globalConfig
   let middlewares = [].concat(onAction || []);
@@ -106,7 +118,7 @@ function applyMiddlewaresDispatch() {
 
   return (action) => {
     i = 0;
-    next( action )
+    next(ns ? addNamespace(ns, action) : action )
   }
 }
 
@@ -127,7 +139,7 @@ export function dispatch(action) {
 
   if (effects && effects[name]) {
     return effects[name](action, { 
-      dispatch: middlewaresDispatch(), // 替换为中间件的diapatch
+      dispatch: middlewaresDispatch(ns), // 替换为中间件的diapatch
       state: globalState[ns], 
       globalState 
     })
