@@ -1,10 +1,12 @@
-// 实现model, unmodel, router, start等方法
+// 实现dispatch和useMapState方法
 
+import { useEffect, useState, useCallback } from 'react'
 import ReactDOM from 'react-dom'
 import browserHistory from './history';
 
 let globalState = {};
 let globalModels = {};
+let globalUpdaters = [];
 let globalComponent = null;
 // let globalConfig = {};
 let globalUnlisten = {}
@@ -39,7 +41,7 @@ export function dva(config = {}) {
           temp.push(
             subscriptions[key]({ 
               history, 
-              // dispatch // 暂未实现
+              dispatch
             })
           )
         }
@@ -75,3 +77,62 @@ export function dva(config = {}) {
 }
 
 export default dva;
+
+// 实现dispatch
+export function dispatch(action) {
+  let { type = '' } = action;
+  let temp = type.split('/')
+
+  if (temp.length !== 2) {
+    throw new Error(`dispatch: ${type}错误, 格式: 名称空间/操作`)
+  }
+
+  let [ns, name] = temp
+  let model = globalModels[ns]
+  
+  if (!model) return;
+  let { effects, reducers } = model
+
+  if (effects && effects[name]) {
+    return effects[name](action, { 
+      dispatch, 
+      state: globalState[ns], 
+      globalState 
+    })
+  }
+
+  if (reducers && reducers[name]) {
+    let reducer = reducers[name]
+
+    // 更改状态
+    globalState[ns] = reducer(globalState[ns], action)
+
+    // 更新视图
+    globalUpdaters.forEach(([setState, getState]) => {
+      setState(getState())
+    })
+  }
+}
+
+// 类似于connect
+export function useMapState(mapState, mapDispatch) {
+  const getState = useCallback(
+    () => mapState ? mapState(globalState) : globalState,
+    [mapState]
+  )
+
+  const [state, setState] = useState(() => getState())
+
+  useEffect(() => {
+    globalUpdaters.push([setState, getState])
+
+    return () => {
+      globalUpdaters = globalUpdaters.filter(l => l[0] !== setState);
+    }
+  }, [getState])
+
+  return [ 
+    state, 
+    mapDispatch ? mapDispatch(dispatch) : dispatch
+  ]
+}
