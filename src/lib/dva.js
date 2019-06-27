@@ -1,4 +1,4 @@
-// 实现dispatch和useMapState方法
+// 中间件机制
 
 import { useEffect, useState, useCallback } from 'react'
 import ReactDOM from 'react-dom'
@@ -8,11 +8,11 @@ let globalState = {};
 let globalModels = {};
 let globalUpdaters = [];
 let globalComponent = null;
-// let globalConfig = {};
+let globalConfig = {};
 let globalUnlisten = {}
 
 export function dva(config = {}) {
-  // globalConfig = config;
+  globalConfig = config;
   globalState = config.initialState || {};
 
   let history = config.history || browserHistory
@@ -41,7 +41,7 @@ export function dva(config = {}) {
           temp.push(
             subscriptions[key]({ 
               history, 
-              dispatch
+              dispatch: middlewaresDispatch() // 替换为中间件的diapatch
             })
           )
         }
@@ -78,6 +78,38 @@ export function dva(config = {}) {
 
 export default dva;
 
+export function getState() {
+  return globalState
+}
+
+// 包裹了中间件的dispatch
+export function middlewaresDispatch() {
+  return applyMiddlewaresDispatch()
+}
+
+// 中间件机制
+function applyMiddlewaresDispatch() {
+  let i = 0;
+  let { onAction } = globalConfig
+  let middlewares = [].concat(onAction || []);
+
+  function next (action) {
+    const handler = middlewares[i++]
+
+    if (!handler) {
+      dispatch(action)
+      return;
+    }
+      
+    handler({ getState, action, dispatch, next })
+  }
+
+  return (action) => {
+    i = 0;
+    next( action )
+  }
+}
+
 // 实现dispatch
 export function dispatch(action) {
   let { type = '' } = action;
@@ -95,7 +127,7 @@ export function dispatch(action) {
 
   if (effects && effects[name]) {
     return effects[name](action, { 
-      dispatch, 
+      dispatch: middlewaresDispatch(), // 替换为中间件的diapatch
       state: globalState[ns], 
       globalState 
     })
@@ -131,8 +163,10 @@ export function useMapState(mapState, mapDispatch) {
     }
   }, [getState])
 
+  let middleDispatch = middlewaresDispatch()
+
   return [ 
     state, 
-    mapDispatch ? mapDispatch(dispatch) : dispatch
+    mapDispatch ? mapDispatch(middleDispatch) : middleDispatch
   ]
 }
