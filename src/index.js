@@ -7,6 +7,10 @@ let app = dva({
   onError(e) {
     console.error('onError', e.message);
   },
+
+  // onStateChange(newState, oldState, action) {
+  //   console.log('***',newState, oldState, action)
+  // }
 })
 
 app.use(pluginTest1())

@@ -1,4 +1,6 @@
 
+// 取自dva, 有些许简化
+
 const hooks = [
   'onError',
   'onStateChange',

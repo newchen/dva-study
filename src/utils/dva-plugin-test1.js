@@ -1,6 +1,6 @@
 export default () => {
   return {
-    onEffect(effect, { put }, model, actionType) {
+    onEffect(effect, { dispatch }, model, actionType) {
       return async function(...args) {
         console.log('start pluginTest1',actionType)
         await effect(...args);
@@ -10,7 +10,7 @@ export default () => {
 
     onReducer(reducer) {
       return (state, action) => {
-        console.log('onReducer1: ******- ', reducer(state, action), state, action );
+        console.log('onReducer1: ******- ');
         return { ...state, ...reducer(state, action)};
       }
     }
