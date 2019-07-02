@@ -4,7 +4,8 @@ import { useMapState } from '../../lib/dva'
 
 export default () => {
   let [ state, dispatch ] = useMapState(state => ({ ...state.app, ...state.aa, loading: state.loading }))
-  console.log('loading', state.loading)
+  console.log('state', state)
+
   return (
     <div>
       <p>alayout的子页面: aa</p>

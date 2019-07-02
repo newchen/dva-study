@@ -10,15 +10,15 @@ let app = dva({
     console.error('onError', e.message);
   },
 
-  // onStateChange(newState, oldState, action) {
-  //   console.log('***',newState, oldState, action)
+  // onStateChange(newState, action) {
+  //   console.log('***', newState, action)
   // }
 })
 
 app.use(createLoading())
 app.use(pluginTest1())
 app.use(pluginTest2())
-// app.use(pluginTest3())
+app.use(pluginTest3())
 
 app.router(require('./router').default)
 

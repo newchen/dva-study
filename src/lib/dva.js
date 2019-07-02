@@ -17,6 +17,7 @@ let globalPlugins = null
 export function dva(config = {}) {
   globalConfig = config;
   globalState = config.initialState || {};
+  globalPlugins = new Plugin()
 
   let history = config.history || browserHistory
 
@@ -80,10 +81,6 @@ export function dva(config = {}) {
     },
 
     use(plugin) {
-      if (!globalPlugins) {
-        globalPlugins = new Plugin()
-      }
-
       globalPlugins.use(plugin)
     }
   }
@@ -166,10 +163,18 @@ function addErrorHandle(fn, errors) {
 // 处理extraReducers
 function handleExtraReducers(extraReducers) {
   return (globalState, action) => {
+    let newState = {};
+
     for(let ns in extraReducers) {
       let state = globalState[ns]
-      globalState[ns] = extraReducers[ns](state, action)
+      newState[ns] = extraReducers[ns](state, action)
     }
+
+    if (Object.keys(newState).length > 0) {
+      return { ...globalState, ...newState }
+    }
+
+    return globalState
   }
 }
 
@@ -187,13 +192,11 @@ export function dispatch(action) {
     throw new Error(`dispatch: ${type}错误, 格式: 名称空间/操作`)
   }
 
-  let oldState = globalState
-
   // dva中只要dispatch了就会触发onReducer和extraReducers, 就算该namespace不存在
   let reducerHooks = getAllHooks('onReducer')
   let extraReducers = getPlugin('extraReducers');
 
-  globalState = reducerHooks(
+  let newState = reducerHooks(
     handleExtraReducers(extraReducers)
   )(globalState, action)
 
@@ -213,8 +216,8 @@ export function dispatch(action) {
     
     let params = { 
       dispatch: middlewaresDispatch(ns), 
-      state: globalState[ns], 
-      globalState 
+      state: newState[ns], 
+      globalState: newState 
     }
 
     // 没有注册onEffect插件函数, 只有当前的effects[name], 
@@ -242,25 +245,27 @@ export function dispatch(action) {
   } else if (reducers && reducers[name]) {
     let reducer = reducers[name]
 
-    globalState[ns] = globalConfig.useImmer ?
-      produce(globalState[ns], (draft) => {
+    newState[ns] = globalConfig.useImmer ?
+      produce(newState[ns], (draft) => {
         reducer(draft, action)
       }) : 
-      reducer(globalState[ns], action)
+      reducer(newState[ns], action)
   }
-  
-  if (globalState !== oldState) {
+
+  // if (newState !== globalState) {
     // onStateChange处理
     const changes = getAllHooks('onStateChange')
     for (const change of changes) {
-      change(globalState, oldState, action);
+      change(newState, action);
     }
+
+    globalState = newState;
 
     // UI视图更新
     globalUpdaters.forEach(([setState, getState]) => {
       setState(getState())
     })
-  }
+  // }
 }
 
 // 类似于connect
