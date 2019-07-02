@@ -10,8 +10,8 @@ export default {
 
   effects: {
     async fetchInit({ payload }, { dispatch, state, globalState}) {
-      console.log('effects state: ', state, globalState)
-      console.log('app payload: ', payload)
+      console.log('app fetchInit effects state: ', state, globalState)
+      console.log('app fetchInit payload: ', payload)
       let data = await fetchInit();
 
       dispatch({
@@ -33,8 +33,6 @@ export default {
 
   reducers: {
     upadte(state, { payload }) {
-      console.log('sssssss',state)
-
       // console.info('%c upadte', 'color: green')
 
       return { ...state, ...payload }

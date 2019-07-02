@@ -1,10 +1,11 @@
 export default () => {
   return {
     onEffect(effect, { dispatch }, model, actionType) {
+      // console.log('fffff',effect )
       return async function(...args) {
-        console.log('start pluginTest1',actionType)
+        console.log('start onEffect pluginTest1',actionType)
         await effect(...args);
-        console.log('end pluginTest1', actionType)
+        console.log('end onEffect pluginTest1', actionType)
       }
     },
 

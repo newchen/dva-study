@@ -134,18 +134,6 @@ function middlewaresDispatch(ns) {
   }
 }
 
-// 添加错误处理
-function addErrorHandle(fn, errors) {
-  return async (...rest) => {
-    try {
-      await fn(...rest)
-    } catch(e) {
-      errors.forEach(v => v(e))
-      setTimeout(() => { throw new Error(e.stack) }) // 开发版本有这个
-    }
-  }
-}
-
 // 获取插件
 export function getPlugin(key) {
   return globalPlugins.get(key)
@@ -163,19 +151,31 @@ function getAllHooks(key) {
   return hooks
 }
 
-function handleReducer(reducer) {
-  return (globalState, action) => {
-    let ns = action.type.split('/')[0]
-    let state = globalState[ns]
-
-    let nextState = globalConfig.useImmer ?
-      produce(state, (draft) => {
-        reducer(draft, action)
-      }) : 
-      reducer(state, action)
-
-    return { [ns]: nextState }
+// 添加错误处理
+function addErrorHandle(fn, errors) {
+  return async (...rest) => {
+    try {
+      await fn(...rest)
+    } catch(e) {
+      errors.forEach(v => v(e))
+      setTimeout(() => { throw new Error(e.stack || e) }) // 开发版本有这个
+    }
   }
+}
+
+// 处理extraReducers
+function handleExtraReducers(extraReducers) {
+  return (globalState, action) => {
+    for(let ns in extraReducers) {
+      let state = globalState[ns]
+      globalState[ns] = extraReducers[ns](state, action)
+    }
+  }
+}
+
+// 判断是否async函数
+function isAsyncFunction(fn) {
+  return Object.prototype.toString.call(fn) == "[object AsyncFunction]"
 }
 
 // 最底层的dispatch
@@ -187,12 +187,23 @@ export function dispatch(action) {
     throw new Error(`dispatch: ${type}错误, 格式: 名称空间/操作`)
   }
 
-  let [ns, name] = temp
-  let model = globalModels[ns]
-  
-  if (!model) return;
-  let { effects, reducers } = model
+  let oldState = globalState
 
+  // dva中只要dispatch了就会触发onReducer和extraReducers, 就算该namespace不存在
+  let reducerHooks = getAllHooks('onReducer')
+  let extraReducers = getPlugin('extraReducers');
+
+  globalState = reducerHooks(
+    handleExtraReducers(extraReducers)
+  )(globalState, action)
+
+  let [ns, name] = temp
+  let model = globalModels[ns] || {} // 防止解构报错
+  
+  // if (!model) return; // 因为extraReducers和onReducer会更新状态, 需要触发UI视图更新
+  let { effects, reducers } = model;
+
+  // 触发onEffect
   if (effects && effects[name]) {
     let errors = getAllHooks('onError')
     let curEffect = addErrorHandle(effects[name], errors)
@@ -215,7 +226,10 @@ export function dispatch(action) {
     // onEffect逻辑
     // 假设use添加的顺序是: [1, 2, 3], 那么执行顺序: 3 -> 2 -> 1 -> 1 -> 2 -> 3
     effectHooks.reduce((pre, cur, index, arr) => {
-      let asyncFn = cur(pre( ...args ),  ...args.slice(1))
+      if (!isAsyncFunction(pre)) {
+        pre = pre( ...args )
+      }
+      let asyncFn = cur(pre,  ...args.slice(1))
 
       if (index === arr.length - 1) {
         asyncFn(action, params)
@@ -225,18 +239,17 @@ export function dispatch(action) {
     })
 
     return;
-  }
-
-  if (reducers && reducers[name]) {
+  } else if (reducers && reducers[name]) {
     let reducer = reducers[name]
-    let reducerHooks = getAllHooks('onReducer')
-    let oldState = globalState
 
-    // dva中effect和reducer操作都会触发onReducer, 这里只有reducer操作才会触发
-    globalState = reducerHooks(
-      handleReducer(reducer)
-    )(globalState, action)
-
+    globalState[ns] = globalConfig.useImmer ?
+      produce(globalState[ns], (draft) => {
+        reducer(draft, action)
+      }) : 
+      reducer(globalState[ns], action)
+  }
+  
+  if (globalState !== oldState) {
     // onStateChange处理
     const changes = getAllHooks('onStateChange')
     for (const change of changes) {
