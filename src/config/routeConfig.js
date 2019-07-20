@@ -36,4 +36,13 @@ export default [
     path: '/b',
     component: () => import('../pages/b')
   },
+  // 跳转
+  {
+    path: '/abc',
+    redirect: '/a/aa'
+  },
+  // 404
+  {
+    component: () => import('../pages/404')
+  }
 ]
