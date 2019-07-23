@@ -39,7 +39,7 @@ function getRoutes(routes, app) {
           <Redirect 
             key={fullPath} 
             exact 
-            from={path} to={joinPath(parentPath, redirect)}
+            from={fullPath} to={joinPath(parentPath, redirect)}
           />
         )
       }
