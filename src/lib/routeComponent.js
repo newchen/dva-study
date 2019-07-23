@@ -1,8 +1,39 @@
-// 支持多层嵌套, 支持加载component和model
+// 实现: setRuntime, patchRoutes, render, onRouteChange 运行时方法
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Router, Route, Switch, Redirect } from 'react-router-dom'
 import dynamic from './dynamic'
+import queryString from 'query-string'
+
+// 实现: https://umijs.org/zh/guide/runtime-config.html
+// 目前实现了下面3个运行时方法
+let patchRoutes = (routes) => routes
+let render = (oldRender) => oldRender()
+let onRouteChange = ({ location, routes, action }) => {}
+
+function resolve(path) {
+  return path.replace('./', '')
+}
+
+// 设置runtime运行时
+export function setRuntime(pathOrConfig) {
+  let config = pathOrConfig
+
+  try {
+    if(typeof(pathOrConfig) === 'string') {
+      config = require('@/' + resolve(pathOrConfig))
+    }
+  } catch(e) {
+    throw new Error(`
+      setRuntime方法, 如果参数是字符串类型: 
+        1.需配置webpack别名src为@, 
+        2.路径是相对于src的, 例如src下的app.js, 只需填写'app'或'./app'即可`
+    )
+  }
+  patchRoutes = config.patchRoutes || patchRoutes;
+  render = config.render || render
+  onRouteChange = config.onRouteChange || onRouteChange
+}
 
 function joinPath(parentPath, path) {
   if(!parentPath) return path;
@@ -18,28 +49,48 @@ function joinPath(parentPath, path) {
   return parentPath + path;
 }
 
-function getRoutes(routes, app) {
+function handleRoutes(routes) {
+  function travel(routes, parentPath) {
+    routes.forEach((route) => {
+      // path默认为*, 表示匹配任意路径
+      const { path = '*', children, redirect } = route;
+      let fullPath = joinPath(parentPath, path)
+
+      route.path = fullPath
+
+      if (redirect) {
+        route.redirect = joinPath(parentPath, redirect)
+      }
+
+      if( Array.isArray(children) ) {
+        travel(children, fullPath)
+      }
+    })
+  }
+
+  travel(routes)
+  // patchRoutes运行时
+  return patchRoutes(routes) || routes
+}
+
+function getRouteComponents(routes, app) {
   let routesArr = [];
 
   function travelRoutes(routes, parentRoute = {}) {
     routes.forEach((route) => {
-      // path默认为*, 表示匹配任意路径
-      const { path = '*', redirect, children, component, models = [] } = route;
+      const { path, redirect, children, component, models = [] } = route;
 
       const { 
-        path: parentPath = '', 
         component: parentComponent, 
         models: parentModels = []
       } = parentRoute
 
-      let fullPath = joinPath(parentPath, path)
-
       if(redirect) {
         routesArr.push(
           <Redirect 
-            key={fullPath} 
+            key={path} 
             exact 
-            from={fullPath} to={joinPath(parentPath, redirect)}
+            from={path} to={redirect}
           />
         )
       }
@@ -51,8 +102,8 @@ function getRoutes(routes, app) {
         if (hasParent && !hasChildren) {
           routesArr.push(
             <Route 
-              key={fullPath} 
-              exact path={fullPath} 
+              key={path} 
+              exact path={path} 
               render={
                 (props) => {
                   return parentComponent // 这里是重点
@@ -82,8 +133,8 @@ function getRoutes(routes, app) {
         } else if (!hasChildren) {
           routesArr.push(
             <Route 
-              key={fullPath} 
-              exact path={fullPath} 
+              key={path} 
+              exact path={path} 
               render={ // 按需加载
                 (props) => React.createElement(
                   dynamic({
@@ -112,7 +163,7 @@ function getRoutes(routes, app) {
             [ ...parentModels, ...models ] : 
             models,
 
-          path: fullPath
+          path
         })
       }
     })
@@ -123,7 +174,30 @@ function getRoutes(routes, app) {
   return routesArr;
 }
 
+function handleLoc(location) {
+  return {
+    ...location,
+    query: queryString.parse(location.search)
+  }
+}
+
+function handleRouteChange(history, routes) {
+  history.listen((location, action) => {
+    onRouteChange({ location: handleLoc(location), routes, action })
+  })
+
+  onRouteChange({ 
+    location: handleLoc(history.location), 
+    routes, 
+    action: undefined 
+  })
+}
+
 export function RouteComponent(props) {
+  let routes = handleRoutes(props.routes)
+
+  handleRouteChange(props.history, routes)
+
   return (
     <Router history={props.history}>
         <Switch>
@@ -141,9 +215,19 @@ export function RouteComponent(props) {
               }
             }/>  
           */}
-          { getRoutes(props.routes, props.app) }
+          { getRouteComponents(routes, props.app) }
         </Switch>
     </Router>
   )
 }
-export default RouteComponent
+
+export default (props) => {
+  let [ Comp, setComp ] = useState(null)
+
+  useEffect(() => {
+    // render 运行时
+    render(() => setComp(<RouteComponent {...props}/>))
+  }, [])
+
+  return Comp
+}

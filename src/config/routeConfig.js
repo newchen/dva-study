@@ -18,7 +18,7 @@ export default [
             ],
             component: () => import('../pages/aa/index'),  
           },
-          { path: 'bb', component: () => import('../pages/bb') },
+          { path: 'bb/:id', component: () => import('../pages/bb') },
         ]
       },
     ],
