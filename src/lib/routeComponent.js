@@ -16,23 +16,23 @@ function resolve(path) {
 }
 
 // 设置runtime运行时
-export function setRuntime(pathOrConfig) {
-  let config = pathOrConfig
+export function setRuntime(config = {}) {
+  if(typeof(config) === 'function') {
+    config = config() // 此时config大致为: () => require('@/app')
+  } 
 
-  try {
-    if(typeof(pathOrConfig) === 'string') {
-      config = require('@/' + resolve(pathOrConfig))
-    }
-  } catch(e) {
+  if(typeof config === 'object') {
+    patchRoutes = config.patchRoutes || patchRoutes;
+    render = config.render || render
+    onRouteChange = config.onRouteChange || onRouteChange
+  } else {
     throw new Error(`
-      setRuntime方法, 如果参数是字符串类型: 
-        1.需配置webpack别名src为@, 
-        2.路径是相对于src的, 例如src下的app.js, 只需填写'app'或'./app'即可`
-    )
+      setRuntime 只支持传入
+        function, 例如: () => require('@/app')
+        或object, 例如: { patchRoutes, render, onRouteChange } 
+    `)
   }
-  patchRoutes = config.patchRoutes || patchRoutes;
-  render = config.render || render
-  onRouteChange = config.onRouteChange || onRouteChange
+
 }
 
 function joinPath(parentPath, path) {
