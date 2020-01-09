@@ -1,24 +1,73 @@
+// export default [
+//   // BasicLayout布局
+//   {
+//     path: '/',
+//     component: () => import('../layouts/BasicLayout'),
+//     models: [
+//       () => import('../models/app')
+//     ],
+//     children: [
+//       { 
+//         path: 'a', 
+//         component: () => import('../layouts/APageLayout'),
+//         children: [
+//           { 
+//             path: 'aa', 
+//             models: [
+//               () => import('../pages/aa/model')
+//             ],
+//             component: () => import('../pages/aa/index'),  
+//           },
+//           { path: 'bb/:id', component: () => import('../pages/bb') },
+//         ]
+//       },
+//     ],
+//   },
+//   // 授权布局
+//   {
+//     path: '/auth',
+//     component: () => import('../layouts/AuthBasicLayout'),
+//     children: [
+//       { path: 'b', component: () => import('../pages/b') },
+//     ],
+//   },
+//   // 无布局
+//   {
+//     path: '/b',
+//     component: () => import('../pages/b')
+//   },
+//   // 跳转
+//   {
+//     path: '/abc',
+//     redirect: '/a/aa'
+//   },
+//   // 404
+//   {
+//     component: () => import('../pages/404')
+//   }
+// ]
+
 export default [
   // BasicLayout布局
   {
     path: '/',
-    component: () => import('../layouts/BasicLayout'),
+    component: '../layouts/BasicLayout',
     models: [
-      () => import('../models/app')
+      '../models/app'
     ],
     children: [
       { 
         path: 'a', 
-        component: () => import('../layouts/APageLayout'),
+        component: '../layouts/APageLayout',
         children: [
           { 
             path: 'aa', 
             models: [
-              () => import('../pages/aa/model')
+              '../pages/aa/model'
             ],
-            component: () => import('../pages/aa/index'),  
+            component: '../pages/aa/index',  
           },
-          { path: 'bb/:id', component: () => import('../pages/bb') },
+          { path: 'bb/:id', component: '../pages/bb' },
         ]
       },
     ],
@@ -28,13 +77,13 @@ export default [
     path: '/auth',
     component: () => import('../layouts/AuthBasicLayout'),
     children: [
-      { path: 'b', component: () => import('../pages/b') },
+      { path: 'b', component: '../pages/b' },
     ],
   },
   // 无布局
   {
     path: '/b',
-    component: () => import('../pages/b')
+    component: '../pages/b'
   },
   // 跳转
   {
@@ -43,6 +92,6 @@ export default [
   },
   // 404
   {
-    component: () => import('../pages/404')
+    component: 'pages/404'
   }
 ]

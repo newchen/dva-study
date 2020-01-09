@@ -49,9 +49,32 @@ function joinPath(parentPath, path) {
   return parentPath + path;
 }
 
+// 将component和models字符串形式, 转为动态导入方法
+function handleImport(route) {
+  let { component, models } = route
+
+  if (typeof component === 'string') {
+    route.component = () => import(`@/${component}`)
+  }
+
+  if (models) {
+    route.models = [].concat(models).map(v => {
+      if(typeof(v) === 'string') {
+        return () => import(`${v}`)
+      } else {
+        return v
+      }
+    })
+  }
+
+  return route
+}
+
 function handleRoutes(routes) {
   function travel(routes, parentPath) {
     routes.forEach((route) => {
+      route = handleImport(route)
+
       // path默认为*, 表示匹配任意路径
       const { path = '*', children, redirect } = route;
       let fullPath = joinPath(parentPath, path)
