@@ -49,23 +49,27 @@ function joinPath(parentPath, path) {
   return parentPath + path;
 }
 
-// 将component和models字符串形式, 转为动态导入方法
+// 尝试将component和models字符串形式, 转为动态导入
 function handleImport(route) {
+  // 除非对构建做一些额外操作, 否则不支持, umi生成了.umi目录完成该任务
+  // 文章: http://www.imooc.com/article/294778
+  /*
   let { component, models } = route
 
   if (typeof component === 'string') {
-    route.component = () => import(`@/${component}`)
+    route.component = () => import(`@/pages/${component}`)
   }
 
   if (models) {
     route.models = [].concat(models).map(v => {
       if(typeof(v) === 'string') {
-        return () => import(`${v}`)
+        return () => import(`@/pages/${v}`)
       } else {
         return v
       }
     })
   }
+  */
 
   return route
 }

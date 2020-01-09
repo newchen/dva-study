@@ -1,7 +1,8 @@
 ## dva学习 - 源码相关
 
 ```
-layout布局示例4:
-  实现: https://umijs.org/zh/guide/runtime-config.html
-  目前实现了: setRuntime, patchRoutes, render, onRouteChange 运行时方法
+layout布局示例5:
+  尝试将路由配置component和models: () => import('xx')形式, 转为支持字符串
+  例如: umi路由中component配置就是字符串
+  结论: umi生成了.umi做相关处理, 只在前端无法完成
 ```
