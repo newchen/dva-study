@@ -34,7 +34,7 @@ export default class Plugin {
     }
   }
 
-  apply(key, defaultHandler) {
+  apply(key, defaultHandler = () => {}) {
     const { hooks } = this;
     const fns = hooks[key];
 
